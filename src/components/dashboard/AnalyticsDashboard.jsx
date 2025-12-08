@@ -41,7 +41,7 @@ export default function AnalyticsDashboard({
                 ...item, // Keep root fields like name, email, _id
                 ...details, // Spread nested details (department, graduationYear, etc.) to the top level
                 // Explicitly ensure critical fields exist if needed by charts
-                department: details.department || "Unknown",
+                department: details.branch || "Unknown",
                 graduationYear: details.graduationYear || "N/A",
             };
         });

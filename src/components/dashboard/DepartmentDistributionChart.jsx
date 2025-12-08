@@ -36,7 +36,7 @@ export default function DepartmentDistributionChart({ alumni = [] }) {
 
     const deptMap = {};
     alumni.forEach((a) => {
-      const dept = a.department || 'Unknown';
+      const dept = a.branch || 'Unknown';
       deptMap[dept] = (deptMap[dept] || 0) + 1;
     });
 
