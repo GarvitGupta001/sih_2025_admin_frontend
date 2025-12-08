@@ -48,6 +48,7 @@ export default function StudentsPage() {
                     },
                 })
                 .then((res) => {
+                    // Assuming res.data.data is an array of the object structure provided
                     setStudents(res.data.data);
                     console.log(JSON.stringify(res.data.data));
                     setIsLoading(false);
@@ -60,24 +61,28 @@ export default function StudentsPage() {
         }
     }, [token]);
 
+    // Updated Filter Logic based on new JSON structure
     const filteredStudents = students.filter((s) => {
-        const user = s.userId | undefined;
-        const name = user?.name || "";
-        const email = user?.email || "";
+        // Name and Email are now at the root level
+        const name = s.name || "";
+        const email = s.email || "";
+        // Academic details are nested inside profileDetails
+        const degreeName = s.profileDetails?.academic?.degreeName || "";
+
         return (
             name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            s.academic?.degreeName
-                ?.toLowerCase()
-                .includes(searchQuery.toLowerCase())
+            degreeName.toLowerCase().includes(searchQuery.toLowerCase())
         );
     });
 
+    // Updated Stats Logic
     const activeStudents = students.filter(
-        (s) => !s.academic?.isCompleted
+        (s) => !s.profileDetails?.academic?.isCompleted
     ).length;
+
     const graduatedStudents = students.filter(
-        (s) => s.academic?.isCompleted
+        (s) => s.profileDetails?.academic?.isCompleted
     ).length;
 
     return (
@@ -213,48 +218,45 @@ export default function StudentsPage() {
                                         </TableRow>
                                     ) : (
                                         filteredStudents.map((student) => {
-                                            const user =
-                                                student.userId | undefined;
+                                            // Accessing profileDetails directly
+                                            const academic =
+                                                student.profileDetails
+                                                    ?.academic;
+
                                             return (
                                                 <TableRow key={student._id}>
                                                     <TableCell className="font-medium">
-                                                        {user?.name || "N/A"}
+                                                        {student.name || "N/A"}
                                                     </TableCell>
                                                     <TableCell>
-                                                        {user?.email || "N/A"}
+                                                        {student.email || "N/A"}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-col">
                                                             <span className="font-medium">
-                                                                {student
-                                                                    .academic
-                                                                    ?.degreeName ||
+                                                                {academic?.degreeName ||
                                                                     "N/A"}
                                                             </span>
                                                             <span className="text-xs text-muted-foreground">
-                                                                {student
-                                                                    .academic
-                                                                    ?.degreeType ||
+                                                                {academic?.degreeType ||
                                                                     ""}
                                                             </span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         Year{" "}
-                                                        {student.academic
-                                                            ?.currentYear || 1}
+                                                        {academic?.currentYear ||
+                                                            1}
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge
                                                             variant={
-                                                                student.academic
-                                                                    ?.isCompleted
+                                                                academic?.isCompleted
                                                                     ? "default"
                                                                     : "secondary"
                                                             }
                                                         >
-                                                            {student.academic
-                                                                ?.isCompleted
+                                                            {academic?.isCompleted
                                                                 ? "Graduated"
                                                                 : "Active"}
                                                         </Badge>
@@ -304,7 +306,7 @@ export default function StudentsPage() {
                                         Name
                                     </label>
                                     <p className="text-sm">
-                                        {selectedStudent.userId?.name || "N/A"}
+                                        {selectedStudent.name || "N/A"}
                                     </p>
                                 </div>
                                 <div>
@@ -312,7 +314,7 @@ export default function StudentsPage() {
                                         Email
                                     </label>
                                     <p className="text-sm">
-                                        {selectedStudent.userId?.email || "N/A"}
+                                        {selectedStudent.email || "N/A"}
                                     </p>
                                 </div>
                                 <div>
@@ -320,8 +322,16 @@ export default function StudentsPage() {
                                         Degree
                                     </label>
                                     <p className="text-sm">
-                                        {selectedStudent.academic?.degreeName} (
-                                        {selectedStudent.academic?.degreeType})
+                                        {
+                                            selectedStudent.profileDetails
+                                                ?.academic?.degreeName
+                                        }{" "}
+                                        (
+                                        {
+                                            selectedStudent.profileDetails
+                                                ?.academic?.degreeType
+                                        }
+                                        )
                                     </p>
                                 </div>
                                 <div>
@@ -330,8 +340,8 @@ export default function StudentsPage() {
                                     </label>
                                     <p className="text-sm">
                                         Year{" "}
-                                        {selectedStudent.academic
-                                            ?.currentYear || 1}
+                                        {selectedStudent.profileDetails
+                                            ?.academic?.currentYear || 1}
                                     </p>
                                 </div>
                                 <div>
@@ -339,9 +349,10 @@ export default function StudentsPage() {
                                         Entry Date
                                     </label>
                                     <p className="text-sm">
-                                        {selectedStudent.academic?.entryDate
+                                        {selectedStudent.profileDetails
+                                            ?.academic?.entryDate
                                             ? new Date(
-                                                  selectedStudent.academic.entryDate
+                                                  selectedStudent.profileDetails.academic.entryDate
                                               ).toLocaleDateString()
                                             : "N/A"}
                                     </p>
@@ -351,10 +362,10 @@ export default function StudentsPage() {
                                         Expected Graduation
                                     </label>
                                     <p className="text-sm">
-                                        {selectedStudent.academic
-                                            ?.expectedGraduationDate
+                                        {selectedStudent.profileDetails
+                                            ?.academic?.expectedGraduationDate
                                             ? new Date(
-                                                  selectedStudent.academic.expectedGraduationDate
+                                                  selectedStudent.profileDetails.academic.expectedGraduationDate
                                               ).toLocaleDateString()
                                             : "N/A"}
                                     </p>
@@ -366,14 +377,14 @@ export default function StudentsPage() {
                                     <div className="mt-1">
                                         <Badge
                                             variant={
-                                                selectedStudent.academic
-                                                    ?.isCompleted
+                                                selectedStudent.profileDetails
+                                                    ?.academic?.isCompleted
                                                     ? "default"
                                                     : "secondary"
                                             }
                                         >
-                                            {selectedStudent.academic
-                                                ?.isCompleted
+                                            {selectedStudent.profileDetails
+                                                ?.academic?.isCompleted
                                                 ? "Graduated"
                                                 : "Active"}
                                         </Badge>
