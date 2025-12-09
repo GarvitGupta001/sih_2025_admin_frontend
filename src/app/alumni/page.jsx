@@ -34,7 +34,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function AlumniPage() {
-    const token = localStorage.getItem("token");
+    const [token, setToken] = useState("")
     const [alumni, setAlumni] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -46,6 +46,10 @@ export default function AlumniPage() {
         batch: "",
         status: "", // all, verified, pending
     });
+
+    useEffect(() => {
+        setToken(localStorage.getItem("token"));
+    }, []);
 
     useEffect(() => {
         if (token) {
