@@ -129,7 +129,7 @@ const Login = () => {
                                 Admin Login • Sarthak
                             </p>
 
-                            <form className="space-y-5" onSubmit={handleLogin}>
+                            <form className="space-y-5">
                                 {/* Email */}
                                 <div className="relative">
                                     <Mail
@@ -166,39 +166,14 @@ const Login = () => {
                                     />
                                 </div>
 
-                                {/* Options */}
-                                <div className="flex items-center justify-between text-xs text-slate-700">
-                                    <label className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            className="w-3 h-3"
-                                        />
-                                        Remember Me
-                                    </label>
-                                    <a href="#" className="hover:underline">
-                                        Forgot Password?
-                                    </a>
-                                </div>
-
                                 {/* Button */}
                                 <button
-                                    type="submit"
+                                    onClick={handleLogin}
                                     className="block w-40 mx-auto bg-slate-900 text-white font-bold py-2.5 rounded-full hover:bg-slate-800 transition shadow-md"
                                 >
                                     Sign In
                                 </button>
                             </form>
-
-                            {/* Bottom Link */}
-                            <p className="text-center text-xs text-slate-600 mt-8">
-                                Don&apos;t have an account?{" "}
-                                <a
-                                    href="#"
-                                    className="font-bold text-slate-900 hover:underline"
-                                >
-                                    Register Institution
-                                </a>
-                            </p>
                         </div>
                     </div>
 

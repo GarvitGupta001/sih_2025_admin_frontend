@@ -51,7 +51,7 @@ const AlumniMapComponent = dynamic(
 );
 
 export default function AnalyticsPage() {
-    const token = localStorage.getItem("token");
+    const [token, setToken] = React.useState(null);
     const [alumni, setAlumni] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [activeTab, setActiveTab] = React.useState("overview");
@@ -61,8 +61,11 @@ export default function AnalyticsPage() {
     });
 
     React.useEffect(() => {
+        setToken(localStorage.getItem("token"));
+    }, [token]);
+    React.useEffect(() => {
         fetchAlumni();
-    }, []);
+    }, [token]);
 
     const fetchAlumni = async () => {
         try {

@@ -4,39 +4,43 @@ import "./globals.css";
 import GoogleTranslateClient from "@/components/dashboard/GoogleTranslateClient";
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+    variable: "--font-geist-sans",
+    subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+    variable: "--font-geist-mono",
+    subsets: ["latin"],
 });
 
 export const metadata = {
-  title: "AlumniConnect Admin",
-  description: "Admin portal for managing alumni and student connections",
+    title: "AlumniConnect Admin",
+    description: "Admin portal for managing alumni and student connections",
 };
 
 export default function RootLayout({ children }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    return (
+        <html lang="en" suppressHydrationWarning={true}>
+            <body
+                className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+            >
+                {/* Hidden Google Translate container */}
+                <div
+                    id="google_translate_element"
+                    style={{ display: "none" }}
+                ></div>
 
-        {/* Hidden Google Translate container */}
-        <div id="google_translate_element" style={{ display: "none" }}></div>
+                {/* Re-trigger translation on route change */}
+                <GoogleTranslateClient />
 
-        {/* Re-trigger translation on route change */}
-        <GoogleTranslateClient />
+                {children}
+                <Toaster />
 
-        {children}
-        <Toaster />
-
-        {/* Google Translate Initialization Script */}
-        <script
-          type="text/javascript"
-          dangerouslySetInnerHTML={{
-            __html: `
+                {/* Google Translate Initialization Script */}
+                <script
+                    type="text/javascript"
+                    dangerouslySetInnerHTML={{
+                        __html: `
               function googleTranslateElementInit() {
                 new google.translate.TranslateElement(
                   {
@@ -97,12 +101,12 @@ export default function RootLayout({ children }) {
                 }
               });
             `,
-          }}
-        />
+                    }}
+                />
 
-        {/* Google Translate External Script */}
-        <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-      </body>
-    </html>
-  );
+                {/* Google Translate External Script */}
+                <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+            </body>
+        </html>
+    );
 }

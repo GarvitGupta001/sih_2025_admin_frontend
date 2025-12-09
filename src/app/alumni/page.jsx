@@ -30,8 +30,6 @@ import {
     RefreshCw,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 export default function AlumniPage() {
     const [token, setToken] = useState("")
@@ -61,16 +59,13 @@ export default function AlumniPage() {
                 })
                 .then((res) => {
                     setAlumni(res.data.data);
-                    console.log(JSON.stringify(res.data.data));
                     setIsLoading(false);
                 })
                 .catch((err) => {
                     console.log(err);
                 });
-        } else {
-            window.location.href = "/login";
         }
-    }, [token]);
+    }, [token, alumni]);
 
     // Apply all filters
     const filteredAlumni = alumni.filter((a) => {
@@ -159,7 +154,7 @@ export default function AlumniPage() {
                     },
                 }
             );
-            if (response.data.success) {
+            if (response?.data?.success) {
                 toast.success("Alumni verified successfully");
                 fetchAlumni();
             } else {
@@ -204,184 +199,6 @@ export default function AlumniPage() {
         }
     };
 
-    // Export to PDF - client side
-    const handleExportPDF = () => {
-        try {
-            const doc = new jsPDF();
-
-            const tableColumn = [
-                "Name",
-                "Email",
-                "Grad Year",
-                "Dept",
-                "Company",
-                "Status",
-            ];
-            const tableRows = filteredAlumni.map((a) => {
-                const user = a.userId;
-                return [
-                    user?.name || "",
-                    user?.email || "",
-                    a.graduationYear,
-                    a.department || "",
-                    a.currentCompany || "",
-                    a.verified ? "Verified" : "Pending",
-                ];
-            });
-
-            autoTable(doc, {
-                head: [tableColumn],
-                body: tableRows,
-                startY: 20,
-                styles: { fontSize: 8 },
-                headStyles: { fillColor: [0, 17, 69] }, // #001145
-            });
-
-            doc.text("Alumni Directory", 14, 15);
-            doc.save(
-                `Alumni_Export_${new Date().toISOString().split("T")[0]}.pdf`
-            );
-            toast.success("PDF exported successfully");
-        } catch (error) {
-            console.error("Export PDF error:", error);
-            toast.error("Failed to export PDF");
-        }
-    };
-
-    // Export to CSV - client side (replaces Download Sample)
-    const handleExportCSV = () => {
-        try {
-            const headers = [
-                "Name",
-                "Email",
-                "Phone",
-                "Graduation Year",
-                "Degree",
-                "Department",
-                "Company",
-                "Designation",
-                "Status",
-                "Skills",
-            ];
-            const rows = filteredAlumni.map((a) => {
-                const user = a.userId;
-                const skills = a.skills?.join("; ") || ""; // Semicolon for CSV safety within field
-                return [
-                    user?.name || "",
-                    user?.email || "",
-                    user?.phone || a.phone || "",
-                    a.graduationYear,
-                    a.degree || "",
-                    a.department || "",
-                    a.currentCompany || "",
-                    a.designation || "",
-                    a.verified ? "Verified" : "Pending",
-                    `"${skills}"`, // Quote skills to handle commas
-                ];
-            });
-
-            const csvContent = [
-                headers.join(","),
-                ...rows.map((row) =>
-                    row
-                        .map((cell) =>
-                            `${cell}`.includes(",") &&
-                            !`${cell}`.startsWith('"')
-                                ? `"${cell}"`
-                                : cell
-                        )
-                        .join(",")
-                ),
-            ].join("\n");
-
-            const blob = new Blob([csvContent], {
-                type: "text/csv;charset=utf-8;",
-            });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute(
-                "download",
-                `Alumni_Export_${new Date().toISOString().split("T")[0]}.csv`
-            );
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            toast.success("CSV exported successfully");
-        } catch (error) {
-            console.error("Export CSV error:", error);
-            toast.error("Failed to export CSV");
-        }
-    };
-
-    // Handle CSV upload - connected to bulk import API
-    const handleUploadCSV = () => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".csv";
-        input.onchange = async (e) => {
-            const target = e.target;
-            const file = target.files?.[0];
-            if (file) {
-                try {
-                    toast.info(`Uploading ${file.name}...`);
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    formData.append("importType", "alumni");
-
-                    const response = await fetch(
-                        `${
-                            process.env.NEXT_PUBLIC_API_URL ||
-                            "http://localhost:5000/api/v1"
-                        }/bulk-imports`,
-                        {
-                            method: "POST",
-                            headers: {
-                                Authorization: `Bearer ${localStorage.getItem(
-                                    "token"
-                                )}`,
-                            },
-                            body,
-                        }
-                    );
-
-                    const data = await response.json();
-                    if (data.success) {
-                        toast.success(
-                            `Upload successful! ${data.data.validRows} valid rows found. Processing...`
-                        );
-                        // Trigger processing
-                        await fetch(
-                            `${
-                                process.env.NEXT_PUBLIC_API_URL ||
-                                "http://localhost:5000/api/v1"
-                            }/bulk-imports/${data.data.importId}/process`,
-                            {
-                                method: "POST",
-                                headers: {
-                                    Authorization: `Bearer ${localStorage.getItem(
-                                        "token"
-                                    )}`,
-                                },
-                            }
-                        );
-                        // Refresh alumni list after a short delay
-                        setTimeout(() => fetchAlumni(), 2000);
-                    } else {
-                        toast.error(data.message || "Upload failed");
-                    }
-                } catch {
-                    toast.error(
-                        "Failed to upload CSV. Please check the file format."
-                    );
-                }
-            }
-        };
-        input.click();
-    };
-
-    // Get unique values for filters
     const uniqueBatches = Array.from(
         new Set(
             alumni
@@ -396,12 +213,6 @@ export default function AlumniPage() {
     const verifiedCount = alumni.filter(
         (a) => a.profileDetails?.verified
     ).length;
-
-    // Helper to get field value
-    const getField = (alumni, field) => {
-        const user = alumni.userId;
-        return alumni[field] || user?.[field] || "";
-    };
 
     return (
         <PageLayout>
@@ -425,27 +236,6 @@ export default function AlumniPage() {
                         >
                             <FileSpreadsheet size={16} />
                             Export Excel
-                        </button>
-                        <button
-                            onClick={handleExportPDF}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dbeaff] rounded-lg text-[#4a5f7c] text-sm font-semibold hover:bg-[#f6f9fe] hover:text-[#001145] transition-colors shadow-sm"
-                        >
-                            <FileText size={16} />
-                            Export PDF
-                        </button>
-                        <button
-                            onClick={handleExportCSV}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dbeaff] rounded-lg text-[#4a5f7c] text-sm font-semibold hover:bg-[#f6f9fe] hover:text-[#001145] transition-colors shadow-sm"
-                        >
-                            <Download size={16} />
-                            Download CSV
-                        </button>
-                        <button
-                            onClick={handleUploadCSV}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#7088aa] hover:bg-[#4a5f7c] text-white rounded-lg text-sm font-bold transition-colors shadow-md"
-                        >
-                            <Upload size={16} />
-                            Upload CSV
                         </button>
                         <button
                             onClick={() => fetchAlumni()}

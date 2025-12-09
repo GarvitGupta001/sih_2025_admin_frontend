@@ -56,8 +56,6 @@ export default function StudentsPage() {
                 .catch((err) => {
                     console.log(err);
                 });
-        } else {
-            window.location.href = "/login";
         }
     }, [token]);
 

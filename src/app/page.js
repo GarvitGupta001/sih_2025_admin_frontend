@@ -1,14 +1,19 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function RootPage() {
+    const [token, setToken] = useState(null);
     const router = useRouter();
 
     useEffect(() => {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        router.replace(token ? "/dashboard" : "/login");
-    }, [router]);
+        setToken(localStorage.getItem("token"));
+        if (token) {
+            router.push("/dashboard");
+        } else {
+            router.push("/login");
+        }
+    }, [token]);
 
     return (
         <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">

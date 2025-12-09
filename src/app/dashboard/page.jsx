@@ -6,10 +6,15 @@ import AnalyticsDashboard from "@/components/dashboard/AnalyticsDashboard";
 import TopSkillsChart from "@/components/dashboard/TopSkillsChart";
 import RecentActivityWidget from "@/components/dashboard/RecentActivityWidget";
 import Header from "@/components/dashboard/Header";
+import Navbar from "@/components/dashboard/Navbar";
 
 const Dashboard = () => {
-    const token = localStorage.getItem("token");
+    const [token, setToken] = useState("");
     const [alumni, setAlumni] = useState([]);
+
+    useEffect(() => {
+        setToken(localStorage.getItem("token"));
+    }, []);
 
     const totalAlumni = alumni.length;
 
@@ -70,13 +75,10 @@ const Dashboard = () => {
                 })
                 .then((res) => {
                     setAlumni(res.data.data);
-                    console.log(res.data.data);
                 })
                 .catch((err) => {
                     console.log(err);
                 });
-        } else {
-            window.location.href = "/login";
         }
     }, [token]);
 
@@ -88,43 +90,7 @@ const Dashboard = () => {
             {/* Main Content */}
             <main className="flex-1 flex flex-col items-center w-full mt-8">
                 {/* Navigation Bar */}
-                <nav className="bg-[#030e29] text-white rounded-full px-8 py-4 shadow-lg mb-12">
-                    <ul className="flex items-center gap-6 text-sm font-bold tracking-wide flex-wrap justify-center">
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/dashboard">Dashboard</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/alumni">Alumni</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/students">Students</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/jobs">Jobs</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/events">Events</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/campaigns">Campaigns</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/surveys">Surveys</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/success-stories">Stories</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/posts">Posts</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/newsletters">Newsletters</a>
-                        </li>
-                        <li className="cursor-pointer hover:text-gray-300 transition-colors">
-                            <a href="/analytics">Analytics</a>
-                        </li>
-                    </ul>
-                </nav>
+                <Navbar />
 
                 {/* Building Sketch */}
                 <div className="w-full max-w-7xl">
@@ -144,11 +110,6 @@ const Dashboard = () => {
                         employmentRate={employmentRate}
                         alumni={alumni}
                     />
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10 pb-8">
-                        {/* Note: Ensure TopSkillsChart also uses .profileDetails internally if it parses alumni */}
-                        <TopSkillsChart alumni={alumni} />
-                        <RecentActivityWidget alumni={alumni} />
-                    </div>
                 </div>
             </main>
 

@@ -41,7 +41,6 @@ export default function JobsPage() {
     const [selectedJob, setSelectedJob] = useState(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [jobToDelete, setJobToDelete] = useState(null);
 
     const fetchJobs = async () => {
         try {
@@ -71,18 +70,6 @@ export default function JobsPage() {
             job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
             job.location?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    const handleDeleteJob = async () => {
-        if (!jobToDelete) return;
-        try {
-            await deleteJob(jobToDelete);
-            toast.success("Job deleted successfully");
-            setIsDeleteDialogOpen(false);
-            setJobToDelete(null);
-        } catch {
-            toast.error("Failed to delete job");
-        }
-    };
 
     const fullTimeCount = jobs.filter((j) => j.type === "full-time").length;
     const internshipCount = jobs.filter((j) => j.type === "internship").length;
@@ -259,20 +246,6 @@ export default function JobsPage() {
                                                         className="text-[#4a5f7c]"
                                                     />
                                                 </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setJobToDelete(job._id);
-                                                        setIsDeleteDialogOpen(
-                                                            true
-                                                        );
-                                                    }}
-                                                    className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2
-                                                        size={16}
-                                                        className="text-red-400"
-                                                    />
-                                                </button>
                                             </div>
                                         </div>
 
@@ -420,12 +393,6 @@ export default function JobsPage() {
                             <AlertDialogCancel className="border-[#a8bdda]">
                                 Cancel
                             </AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={handleDeleteJob}
-                                className="bg-red-500 hover:bg-red-600"
-                            >
-                                Delete
-                            </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
