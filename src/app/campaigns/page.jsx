@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import {
     Plus,
     Search,
@@ -72,6 +72,7 @@ const categoryLabels = {
     sustainability: "Sustainability",
     sports: "Sports",
     general: "General",
+    technology: "Technology",
     other: "Other",
 };
 
@@ -81,6 +82,7 @@ const statusColors = {
     active: "default",
     completed: "default",
     cancelled: "destructive",
+    inactive: "secondary",
 };
 
 export default function CampaignsPage() {
@@ -94,18 +96,16 @@ export default function CampaignsPage() {
     const [isDetailOpen, setIsDetailOpen] = React.useState(false);
     const [selectedCampaign, setSelectedCampaign] = React.useState(null);
     const [isSaving, setIsSaving] = React.useState(false);
-    const [analytics, setAnalytics] = React.useState(null);
 
+    // UPDATED: State matches the input needs for the specific request body
     const [formData, setFormData] = React.useState({
         title: "",
-        tagline: "",
+        intent: "", // Replaces tagline
         description: "",
-        category: "general",
-        targetAmount: 0,
+        category: "test", // Default category/tag
+        targetFunds: 0,
         startDate: "",
         endDate: "",
-        beneficiaries: "",
-        expectedOutcomes: [],
     });
 
     const fetchCampaigns = React.useCallback(async () => {
@@ -116,8 +116,9 @@ export default function CampaignsPage() {
             if (categoryFilter !== "all") params.category = categoryFilter;
 
             const response = await campaignsApi.getAll(params);
-            setCampaigns(response.data.data?.campaigns || []);
-        } catch {
+            setCampaigns(response.data?.data || []);
+        } catch (error) {
+            console.error("Fetch error:", error);
             toast({
                 title: "Error",
                 description: "Failed to fetch campaigns",
@@ -128,24 +129,56 @@ export default function CampaignsPage() {
         }
     }, [statusFilter, categoryFilter, toast]);
 
-    const fetchAnalytics = React.useCallback(async () => {
-        try {
-            const response = await campaignsApi.getAnalytics();
-            setAnalytics(response.data?.data || analytics);
-        } catch {
-            // Silently fail for analytics
-        }
-    }, []);
+    const analytics = React.useMemo(() => {
+        if (!campaigns.length) return null;
+
+        const totalCampaigns = campaigns.length;
+        const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+        const completedCampaigns = campaigns.filter(c => c.status === 'completed').length;
+        
+        const totalRaised = campaigns.reduce((acc, c) => acc + (c.financials?.raisedFunds || 0), 0);
+        const totalTarget = campaigns.reduce((acc, c) => acc + (c.financials?.targetFunds || 0), 0);
+        const totalSupporters = campaigns.reduce((acc, c) => acc + (c.financials?.donorCount || 0), 0);
+        
+        const successRate = totalCampaigns > 0 
+            ? Math.round((completedCampaigns / totalCampaigns) * 100) 
+            : 0;
+
+        return {
+            totalCampaigns,
+            activeCampaigns,
+            completedCampaigns,
+            successRate,
+            funding: { totalRaised, totalTarget, totalSupporters }
+        };
+    }, [campaigns]);
 
     React.useEffect(() => {
         fetchCampaigns();
-        fetchAnalytics();
-    }, [fetchCampaigns, fetchAnalytics]);
+    }, [fetchCampaigns]);
 
+    // UPDATED: Handle Create with correct payload structure
     const handleCreate = async () => {
         try {
             setIsSaving(true);
-            await campaignsApi.create(formData);
+            
+            // Construct payload strictly matching the sample req.body
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                financials: {
+                    targetFunds: Number(formData.targetFunds),
+                    currency: "INR" // Hardcoded as per requirement
+                },
+                // Convert to ISO string (e.g., 2025-12-09T00:25:00.000Z)
+                startDate: new Date(formData.startDate).toISOString(),
+                endDate: new Date(formData.endDate).toISOString(),
+                intent: formData.intent,
+                tags: [formData.category] // Wrapping category as a tag
+            };
+
+            await campaignsApi.create(payload);
+            
             toast({
                 title: "Success",
                 description: "Campaign created successfully",
@@ -153,8 +186,8 @@ export default function CampaignsPage() {
             setIsDialogOpen(false);
             resetForm();
             fetchCampaigns();
-            fetchAnalytics();
-        } catch {
+        } catch (error) {
+            console.error("Create error", error);
             toast({
                 title: "Error",
                 description: "Failed to create campaign",
@@ -168,18 +201,10 @@ export default function CampaignsPage() {
     const handleVerify = async (id) => {
         try {
             await campaignsApi.verify(id);
-            toast({
-                title: "Success",
-                description: "Campaign verified and activated",
-            });
+            toast({ title: "Success", description: "Campaign verified and activated" });
             fetchCampaigns();
-            fetchAnalytics();
         } catch {
-            toast({
-                title: "Error",
-                description: "Failed to verify campaign",
-                variant: "destructive",
-            });
+            toast({ title: "Error", description: "Failed to verify campaign", variant: "destructive" });
         }
     };
 
@@ -189,27 +214,20 @@ export default function CampaignsPage() {
             await campaignsApi.delete(id);
             toast({ title: "Success", description: "Campaign deleted" });
             fetchCampaigns();
-            fetchAnalytics();
         } catch {
-            toast({
-                title: "Error",
-                description: "Failed to delete campaign",
-                variant: "destructive",
-            });
+            toast({ title: "Error", description: "Failed to delete campaign", variant: "destructive" });
         }
     };
 
     const resetForm = () => {
         setFormData({
             title: "",
-            tagline: "",
+            intent: "",
             description: "",
             category: "general",
-            targetAmount: 0,
+            targetFunds: 0,
             startDate: "",
             endDate: "",
-            beneficiaries: "",
-            expectedOutcomes: [],
         });
     };
 
@@ -218,6 +236,17 @@ export default function CampaignsPage() {
             c.title.toLowerCase().includes(search.toLowerCase()) ||
             c.description.toLowerCase().includes(search.toLowerCase())
     );
+
+    const calculateProgress = (raised, target) => {
+        if (!target || target === 0) return 0;
+        return Math.min(Math.round((raised / target) * 100), 100);
+    };
+
+    const calculateDaysRemaining = (endDateStr) => {
+        if (!endDateStr) return 0;
+        const days = differenceInDays(new Date(endDateStr), new Date());
+        return days > 0 ? days : 0;
+    };
 
     return (
         <PageLayout>
@@ -230,6 +259,8 @@ export default function CampaignsPage() {
                             Manage fundraising campaigns and donations
                         </p>
                     </div>
+                    
+                    {/* UPDATED: Dialog Form */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button>
@@ -246,177 +277,98 @@ export default function CampaignsPage() {
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="title">
-                                        Campaign Title
-                                    </Label>
+                                    <Label htmlFor="title">Campaign Title</Label>
                                     <Input
                                         id="title"
                                         value={formData.title}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                title: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Enter campaign title"
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        placeholder="Immediate Agenda Test"
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="tagline">Tagline</Label>
+                                    <Label htmlFor="intent">Intent</Label>
                                     <Input
-                                        id="tagline"
-                                        value={formData.tagline}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                tagline: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Short tagline for the campaign"
+                                        id="intent"
+                                        value={formData.intent}
+                                        onChange={(e) => setFormData({ ...formData, intent: e.target.value })}
+                                        placeholder="Testing"
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="description">
-                                        Description
-                                    </Label>
+                                    <Label htmlFor="description">Description</Label>
                                     <Textarea
                                         id="description"
                                         value={formData.description}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                description: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Detailed description of the campaign"
-                                        rows={4}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        placeholder="Testing the 1-minute delay."
+                                        rows={3}
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="category">
-                                            Category
-                                        </Label>
+                                        <Label htmlFor="category">Category (Tag)</Label>
                                         <Select
                                             value={formData.category}
-                                            onValueChange={(value) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    category: value,
-                                                })
-                                            }
+                                            onValueChange={(value) => setFormData({ ...formData, category: value })}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {Object.entries(
-                                                    categoryLabels
-                                                ).map(([value, label]) => (
-                                                    <SelectItem
-                                                        key={value}
-                                                        value={value}
-                                                    >
-                                                        {label}
-                                                    </SelectItem>
+                                                <SelectItem value="test">Test</SelectItem>
+                                                {Object.entries(categoryLabels).map(([value, label]) => (
+                                                    <SelectItem key={value} value={value}>{label}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="targetAmount">
-                                            Target Amount (₹)
-                                        </Label>
+                                        <Label htmlFor="targetFunds">Target Funds (₹)</Label>
                                         <Input
-                                            id="targetAmount"
+                                            id="targetFunds"
                                             type="number"
-                                            value={formData.targetAmount}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    targetAmount:
-                                                        parseInt(
-                                                            e.target.value
-                                                        ) || 0,
-                                                })
-                                            }
-                                            placeholder="100000"
+                                            value={formData.targetFunds}
+                                            onChange={(e) => setFormData({ ...formData, targetFunds: e.target.value })}
+                                            placeholder="1000"
                                         />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="startDate">
-                                            Start Date
-                                        </Label>
+                                        <Label htmlFor="startDate">Start Date & Time</Label>
                                         <Input
                                             id="startDate"
-                                            type="date"
+                                            type="datetime-local"
                                             value={formData.startDate}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    startDate: e.target.value,
-                                                })
-                                            }
+                                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                                         />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="endDate">
-                                            End Date
-                                        </Label>
+                                        <Label htmlFor="endDate">End Date & Time</Label>
                                         <Input
                                             id="endDate"
-                                            type="date"
+                                            type="datetime-local"
                                             value={formData.endDate}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    endDate: e.target.value,
-                                                })
-                                            }
+                                            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                                         />
                                     </div>
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="beneficiaries">
-                                        Beneficiaries
-                                    </Label>
-                                    <Textarea
-                                        id="beneficiaries"
-                                        value={formData.beneficiaries}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                beneficiaries: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Who will benefit from this campaign?"
-                                        rows={2}
-                                    />
-                                </div>
                             </div>
                             <DialogFooter>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setIsDialogOpen(false)}
-                                >
+                                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                                     Cancel
                                 </Button>
-                                <Button
-                                    onClick={handleCreate}
+                                <Button 
+                                    onClick={handleCreate} 
                                     disabled={
-                                        isSaving ||
-                                        !formData.title ||
-                                        !formData.description ||
-                                        !formData.startDate ||
+                                        isSaving || 
+                                        !formData.title || 
+                                        !formData.startDate || 
                                         !formData.endDate ||
-                                        formData.targetAmount <= 0
+                                        !formData.targetFunds
                                     }
                                 >
-                                    {isSaving && (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    )}
+                                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Create Campaign
                                 </Button>
                             </DialogFooter>
@@ -424,13 +376,11 @@ export default function CampaignsPage() {
                     </Dialog>
                 </div>
 
-                {/* Analytics Cards - Sarthak Theme */}
+                {/* Analytics Cards - Calculated from Campaigns Data */}
                 <div className="grid gap-4 md:grid-cols-4">
                     <div className="bg-[#f6faff] rounded-2xl p-6 border border-[#e4f0ff]">
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-[#7088aa] text-sm font-medium">
-                                Total Campaigns
-                            </span>
+                            <span className="text-[#7088aa] text-sm font-medium">Total Campaigns</span>
                             <div className="p-2 bg-[#e4f0ff] rounded-xl">
                                 <Target className="h-4 w-4 text-[#4a5f7c]" />
                             </div>
@@ -444,33 +394,21 @@ export default function CampaignsPage() {
                     </div>
                     <div className="bg-[#f6faff] rounded-2xl p-6 border border-[#e4f0ff]">
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-[#7088aa] text-sm font-medium">
-                                Total Raised
-                            </span>
+                            <span className="text-[#7088aa] text-sm font-medium">Total Raised</span>
                             <div className="p-2 bg-[#e4f0ff] rounded-xl">
                                 <DollarSign className="h-4 w-4 text-[#4a5f7c]" />
                             </div>
                         </div>
                         <p className="text-4xl font-extrabold text-[#001145]">
-                            ₹
-                            {(
-                                (analytics?.funding?.totalRaised || 0) / 100000
-                            ).toFixed(1)}
-                            L
+                            ₹{((analytics?.funding?.totalRaised || 0) / 100000).toFixed(1)}L
                         </p>
                         <p className="text-[#7088aa] text-sm mt-1">
-                            of ₹
-                            {(
-                                (analytics?.funding?.totalTarget || 0) / 100000
-                            ).toFixed(1)}
-                            L target
+                            of ₹{((analytics?.funding?.totalTarget || 0) / 100000).toFixed(1)}L target
                         </p>
                     </div>
                     <div className="bg-[#f6faff] rounded-2xl p-6 border border-[#e4f0ff]">
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-[#7088aa] text-sm font-medium">
-                                Supporters
-                            </span>
+                            <span className="text-[#7088aa] text-sm font-medium">Supporters</span>
                             <div className="p-2 bg-[#e4f0ff] rounded-xl">
                                 <Users className="h-4 w-4 text-[#4a5f7c]" />
                             </div>
@@ -478,15 +416,11 @@ export default function CampaignsPage() {
                         <p className="text-4xl font-extrabold text-[#001145]">
                             {analytics?.funding?.totalSupporters || 0}
                         </p>
-                        <p className="text-[#7088aa] text-sm mt-1">
-                            Total contributors
-                        </p>
+                        <p className="text-[#7088aa] text-sm mt-1">Total contributors</p>
                     </div>
                     <div className="bg-[#f6faff] rounded-2xl p-6 border border-[#e4f0ff]">
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-[#7088aa] text-sm font-medium">
-                                Success Rate
-                            </span>
+                            <span className="text-[#7088aa] text-sm font-medium">Success Rate</span>
                             <div className="p-2 bg-[#e4f0ff] rounded-xl">
                                 <TrendingUp className="h-4 w-4 text-[#4a5f7c]" />
                             </div>
@@ -504,9 +438,7 @@ export default function CampaignsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>All Campaigns</CardTitle>
-                        <CardDescription>
-                            View and manage all fundraising campaigns
-                        </CardDescription>
+                        <CardDescription>View and manage all fundraising campaigns</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-4 mb-4">
@@ -519,50 +451,28 @@ export default function CampaignsPage() {
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
-                            <Select
-                                value={statusFilter}
-                                onValueChange={setStatusFilter}
-                            >
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
                                 <SelectTrigger className="w-[150px]">
                                     <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">
-                                        All Status
-                                    </SelectItem>
+                                    <SelectItem value="all">All Status</SelectItem>
                                     <SelectItem value="draft">Draft</SelectItem>
-                                    <SelectItem value="pending">
-                                        Pending
-                                    </SelectItem>
-                                    <SelectItem value="active">
-                                        Active
-                                    </SelectItem>
-                                    <SelectItem value="completed">
-                                        Completed
-                                    </SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Select
-                                value={categoryFilter}
-                                onValueChange={setCategoryFilter}
-                            >
+                            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                                 <SelectTrigger className="w-[150px]">
                                     <SelectValue placeholder="Category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">
-                                        All Categories
-                                    </SelectItem>
-                                    {Object.entries(categoryLabels).map(
-                                        ([value, label]) => (
-                                            <SelectItem
-                                                key={value}
-                                                value={value}
-                                            >
-                                                {label}
-                                            </SelectItem>
-                                        )
-                                    )}
+                                    <SelectItem value="all">All Categories</SelectItem>
+                                    {Object.entries(categoryLabels).map(([value, label]) => (
+                                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -580,158 +490,91 @@ export default function CampaignsPage() {
                                         <TableHead>Progress</TableHead>
                                         <TableHead>Timeline</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead className="w-20">
-                                            Actions
-                                        </TableHead>
+                                        <TableHead className="w-20">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredCampaigns.length === 0 ? (
                                         <TableRow>
-                                            <TableCell
-                                                colSpan={6}
-                                                className="text-center py-8 text-muted-foreground"
-                                            >
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                                 No campaigns found
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredCampaigns.map((campaign) => (
-                                            <TableRow key={campaign._id}>
-                                                <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">
-                                                            {campaign.title}
-                                                        </div>
-                                                        <div className="text-sm text-muted-foreground line-clamp-1">
-                                                            {campaign.tagline ||
-                                                                campaign.description}
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline">
-                                                        {categoryLabels[
-                                                            campaign.category
-                                                        ] || campaign.category}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between text-sm">
-                                                            <span>
-                                                                ₹
-                                                                {campaign.raisedAmount?.toLocaleString()}
-                                                            </span>
-                                                            <span className="text-muted-foreground">
-                                                                / ₹
-                                                                {campaign.targetAmount?.toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                        <Progress
-                                                            value={
-                                                                campaign.progress ||
-                                                                0
-                                                            }
-                                                            className="h-2"
-                                                        />
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-1 text-sm">
-                                                        <Calendar className="h-3 w-3" />
-                                                        {campaign.endDate
-                                                            ? format(
-                                                                  new Date(
-                                                                      campaign.endDate
-                                                                  ),
-                                                                  "MMM d, yyyy"
-                                                              )
-                                                            : "N/A"}
-                                                    </div>
-                                                    {campaign.daysRemaining !==
-                                                        undefined &&
-                                                        campaign.daysRemaining >
-                                                            0 && (
-                                                            <div className="text-xs text-muted-foreground">
-                                                                {
-                                                                    campaign.daysRemaining
-                                                                }{" "}
-                                                                days left
+                                        filteredCampaigns.map((campaign) => {
+                                            const progress = calculateProgress(
+                                                campaign.financials?.raisedFunds, 
+                                                campaign.financials?.targetFunds
+                                            );
+                                            const daysLeft = calculateDaysRemaining(campaign.endDate);
+                                            const category = campaign.tags && campaign.tags.length > 0 ? campaign.tags[0] : 'general';
+
+                                            return (
+                                                <TableRow key={campaign._id}>
+                                                    <TableCell>
+                                                        <div>
+                                                            <div className="font-medium">{campaign.title}</div>
+                                                            <div className="text-sm text-muted-foreground line-clamp-1">
+                                                                {campaign.intent || campaign.description}
                                                             </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline">
+                                                            {categoryLabels[category] || category}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span>₹{campaign.financials?.raisedFunds?.toLocaleString() || 0}</span>
+                                                                <span className="text-muted-foreground">/ ₹{campaign.financials?.targetFunds?.toLocaleString() || 0}</span>
+                                                            </div>
+                                                            <Progress value={progress} className="h-2" />
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                            <Calendar className="h-3 w-3" />
+                                                            {campaign.endDate ? format(new Date(campaign.endDate), "MMM d, yyyy") : "N/A"}
+                                                        </div>
+                                                        {daysLeft > 0 && (
+                                                            <div className="text-xs text-muted-foreground">{daysLeft} days left</div>
                                                         )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant={
-                                                            statusColors[
-                                                                campaign.status
-                                                            ]
-                                                        }
-                                                    >
-                                                        {campaign.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger
-                                                            asChild
-                                                        >
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                            >
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem
-                                                                onClick={() => {
-                                                                    setSelectedCampaign(
-                                                                        campaign
-                                                                    );
-                                                                    setIsDetailOpen(
-                                                                        true
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                View Details
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem>
-                                                                <Edit className="mr-2 h-4 w-4" />
-                                                                Edit
-                                                            </DropdownMenuItem>
-                                                            {campaign.status ===
-                                                                "pending" && (
-                                                                <DropdownMenuItem
-                                                                    onClick={() =>
-                                                                        handleVerify(
-                                                                            campaign._id
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                                                    Verify &
-                                                                    Activate
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={statusColors[campaign.status] || "default"}>
+                                                            {campaign.status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => { setSelectedCampaign(campaign); setIsDetailOpen(true); }}>
+                                                                    <Eye className="mr-2 h-4 w-4" /> View Details
                                                                 </DropdownMenuItem>
-                                                            )}
-                                                            <DropdownMenuItem
-                                                                className="text-destructive"
-                                                                onClick={() =>
-                                                                    handleDelete(
-                                                                        campaign._id
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                                                <DropdownMenuItem>
+                                                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                                                </DropdownMenuItem>
+                                                                {campaign.status === "pending" && (
+                                                                    <DropdownMenuItem onClick={() => handleVerify(campaign._id)}>
+                                                                        <CheckCircle className="mr-2 h-4 w-4" /> Verify & Activate
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(campaign._id)}>
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
@@ -744,9 +587,7 @@ export default function CampaignsPage() {
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{selectedCampaign?.title}</DialogTitle>
-                            <DialogDescription>
-                                {selectedCampaign?.tagline}
-                            </DialogDescription>
+                            <DialogDescription>{selectedCampaign?.intent || "No intent specified"}</DialogDescription>
                         </DialogHeader>
                         {selectedCampaign && (
                             <div className="space-y-6">
@@ -754,114 +595,47 @@ export default function CampaignsPage() {
                                     <Card>
                                         <CardContent className="pt-4">
                                             <div className="text-2xl font-bold">
-                                                ₹
-                                                {selectedCampaign.raisedAmount?.toLocaleString()}
+                                                ₹{selectedCampaign.financials?.raisedFunds?.toLocaleString() || 0}
                                             </div>
                                             <p className="text-sm text-muted-foreground">
-                                                raised of ₹
-                                                {selectedCampaign.targetAmount?.toLocaleString()}
+                                                raised of ₹{selectedCampaign.financials?.targetFunds?.toLocaleString() || 0}
                                             </p>
-                                            <Progress
-                                                value={
-                                                    selectedCampaign.progress ||
-                                                    0
-                                                }
-                                                className="mt-2"
+                                            <Progress 
+                                                value={calculateProgress(selectedCampaign.financials?.raisedFunds, selectedCampaign.financials?.targetFunds)} 
+                                                className="mt-2" 
                                             />
                                         </CardContent>
                                     </Card>
                                     <Card>
                                         <CardContent className="pt-4">
                                             <div className="text-2xl font-bold">
-                                                {
-                                                    selectedCampaign.supportersCount
-                                                }
+                                                {selectedCampaign.financials?.donorCount || 0}
                                             </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                Supporters
-                                            </p>
+                                            <p className="text-sm text-muted-foreground">Supporters</p>
                                         </CardContent>
                                     </Card>
                                     <Card>
                                         <CardContent className="pt-4">
                                             <div className="text-2xl font-bold">
-                                                {selectedCampaign.daysRemaining ||
-                                                    0}
+                                                {calculateDaysRemaining(selectedCampaign.endDate)}
                                             </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                Days Left
-                                            </p>
+                                            <p className="text-sm text-muted-foreground">Days Left</p>
                                         </CardContent>
                                     </Card>
                                 </div>
 
                                 <div>
-                                    <h4 className="font-semibold mb-2">
-                                        About this Campaign
-                                    </h4>
-                                    <p className="text-muted-foreground">
-                                        {selectedCampaign.description}
-                                    </p>
+                                    <h4 className="font-semibold mb-2">About this Campaign</h4>
+                                    <p className="text-muted-foreground">{selectedCampaign.description}</p>
                                 </div>
 
-                                {selectedCampaign.beneficiaries && (
+                                {selectedCampaign.tags && selectedCampaign.tags.length > 0 && (
                                     <div>
-                                        <h4 className="font-semibold mb-2">
-                                            Beneficiaries
-                                        </h4>
-                                        <p className="text-muted-foreground">
-                                            {selectedCampaign.beneficiaries}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {selectedCampaign.expectedOutcomes?.length >
-                                    0 && (
-                                    <div>
-                                        <h4 className="font-semibold mb-2">
-                                            Expected Outcomes
-                                        </h4>
-                                        <ul className="list-disc list-inside text-muted-foreground">
-                                            {selectedCampaign.expectedOutcomes.map(
-                                                (outcome, i) => (
-                                                    <li key={i}>{outcome}</li>
-                                                )
-                                            )}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {selectedCampaign.milestones?.length > 0 && (
-                                    <div>
-                                        <h4 className="font-semibold mb-2">
-                                            Milestones
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {selectedCampaign.milestones.map(
-                                                (milestone, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="flex items-center gap-2"
-                                                    >
-                                                        <div
-                                                            className={`w-3 h-3 rounded-full ${
-                                                                milestone.isCompleted
-                                                                    ? "bg-green-500"
-                                                                    : "bg-gray-300"
-                                                            }`}
-                                                        />
-                                                        <span
-                                                            className={
-                                                                milestone.isCompleted
-                                                                    ? "line-through text-muted-foreground"
-                                                                    : ""
-                                                            }
-                                                        >
-                                                            {milestone.title}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            )}
+                                        <h4 className="font-semibold mb-2">Tags</h4>
+                                        <div className="flex gap-2">
+                                            {selectedCampaign.tags.map(tag => (
+                                                <Badge key={tag} variant="secondary">{tag}</Badge>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
