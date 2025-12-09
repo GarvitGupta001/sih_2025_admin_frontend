@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, User, LogOut } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,11 +73,6 @@ const Header = () => {
           ))}
         </div>
 
-        {/* Notifications */}
-        <button className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
-          <Bell size={24} />
-        </button>
-
         {/* User Dropdown with Logout */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -88,7 +83,10 @@ const Header = () => {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-[#800000] hover:text-[#800000] hover:bg-red-50 focus:text-[#800000] focus:bg-red-50"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>

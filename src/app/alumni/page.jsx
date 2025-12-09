@@ -30,6 +30,8 @@ import {
     RefreshCw,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function AlumniPage() {
     const [token, setToken] = useState("")
@@ -199,6 +201,96 @@ export default function AlumniPage() {
         }
     };
 
+    // Export to PDF - client side
+    const handleExportPDF = () => {
+        try {
+            const doc = new jsPDF();
+
+            // Add title
+            doc.setFontSize(18);
+            doc.setTextColor(0, 17, 69); // #001145
+            doc.text("Alumni Directory", 14, 22);
+
+            // Add export date
+            doc.setFontSize(10);
+            doc.setTextColor(112, 136, 170); // #7088aa
+            doc.text(`Exported on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+            // Prepare table data
+            const tableData = filteredAlumni.map((a) => {
+                const details = a.profileDetails || {};
+                return [
+                    a.name || "N/A",
+                    a.email || "N/A",
+                    details.phone || "N/A",
+                    details.graduationYear || "N/A",
+                    details.degree || "N/A",
+                    details.currentCompany || "N/A",
+                    details.verified ? "Verified" : "Pending",
+                ];
+            });
+
+            // Generate table
+            autoTable(doc, {
+                startY: 35,
+                head: [["Name", "Email", "Phone", "Grad Year", "Degree", "Company", "Status"]],
+                body: tableData,
+                headStyles: {
+                    fillColor: [0, 17, 69], // #001145
+                    textColor: [255, 255, 255],
+                    fontStyle: "bold",
+                },
+                alternateRowStyles: {
+                    fillColor: [246, 250, 255], // #f6faff
+                },
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                },
+            });
+
+            doc.save(`Alumni_Export_${new Date().toISOString().split("T")[0]}.pdf`);
+            toast.success("PDF exported successfully");
+        } catch (error) {
+            console.error("Export PDF error:", error);
+            toast.error("Failed to export PDF");
+        }
+    };
+
+    // Export to CSV - client side
+    const handleExportCSV = () => {
+        try {
+            const data = filteredAlumni.map((a) => {
+                const details = a.profileDetails || {};
+                return {
+                    Name: a.name || "",
+                    Email: a.email || "",
+                    Phone: details.phone || "",
+                    "Graduation Year": details.graduationYear,
+                    Degree: details.degree || "",
+                    Department: details.department || "",
+                    Company: details.currentCompany || "",
+                    Designation: details.designation || "",
+                    Status: details.verified ? "Verified" : "Pending",
+                    Skills: details.skills?.join(", ") || "",
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Alumni");
+            XLSX.writeFile(
+                workbook,
+                `Alumni_Export_${new Date().toISOString().split("T")[0]}.csv`,
+                { bookType: "csv" }
+            );
+            toast.success("CSV exported successfully");
+        } catch (error) {
+            console.error("Export CSV error:", error);
+            toast.error("Failed to export CSV");
+        }
+    };
+
     const uniqueBatches = Array.from(
         new Set(
             alumni
@@ -230,6 +322,20 @@ export default function AlumniPage() {
 
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-3">
+                        <button
+                            onClick={handleExportPDF}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dbeaff] rounded-lg text-[#4a5f7c] text-sm font-semibold hover:bg-[#f6f9fe] hover:text-[#001145] transition-colors shadow-sm"
+                        >
+                            <FileText size={16} />
+                            Export PDF
+                        </button>
+                        <button
+                            onClick={handleExportCSV}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dbeaff] rounded-lg text-[#4a5f7c] text-sm font-semibold hover:bg-[#f6f9fe] hover:text-[#001145] transition-colors shadow-sm"
+                        >
+                            <Download size={16} />
+                            Export CSV
+                        </button>
                         <button
                             onClick={handleExportExcel}
                             className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dbeaff] rounded-lg text-[#4a5f7c] text-sm font-semibold hover:bg-[#f6f9fe] hover:text-[#001145] transition-colors shadow-sm"
@@ -525,25 +631,24 @@ export default function AlumniPage() {
                                                             {details.skills
                                                                 ?.length >
                                                                 2 && (
-                                                                <span className="px-2 py-1 text-xs bg-[#f6f9fe] text-[#7088aa] rounded-full border border-[#dbeaff]">
-                                                                    +
-                                                                    {details
-                                                                        .skills
-                                                                        .length -
-                                                                        2}
-                                                                </span>
-                                                            )}
+                                                                    <span className="px-2 py-1 text-xs bg-[#f6f9fe] text-[#7088aa] rounded-full border border-[#dbeaff]">
+                                                                        +
+                                                                        {details
+                                                                            .skills
+                                                                            .length -
+                                                                            2}
+                                                                    </span>
+                                                                )}
                                                         </div>
                                                     </td>
 
                                                     {/* Verified Status - Inside profileDetails */}
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span
-                                                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                                details.verified
+                                                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${details.verified
                                                                     ? "bg-green-100 text-green-800"
                                                                     : "bg-yellow-100 text-yellow-800"
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {details.verified
                                                                 ? "Verified"
@@ -744,11 +849,10 @@ export default function AlumniPage() {
                                                     </label>
                                                     <div className="mt-1">
                                                         <span
-                                                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                                details.verified
+                                                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${details.verified
                                                                     ? "bg-green-100 text-green-800"
                                                                     : "bg-yellow-100 text-yellow-800"
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {details.verified
                                                                 ? "Verified"
@@ -763,7 +867,7 @@ export default function AlumniPage() {
                                                 </label>
                                                 <div className="flex flex-wrap gap-2 mt-2">
                                                     {details.skills &&
-                                                    details.skills.length >
+                                                        details.skills.length >
                                                         0 ? (
                                                         details.skills.map(
                                                             (skill, i) => (

@@ -135,13 +135,13 @@ export default function CampaignsPage() {
         const totalCampaigns = campaigns.length;
         const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
         const completedCampaigns = campaigns.filter(c => c.status === 'completed').length;
-        
+
         const totalRaised = campaigns.reduce((acc, c) => acc + (c.financials?.raisedFunds || 0), 0);
         const totalTarget = campaigns.reduce((acc, c) => acc + (c.financials?.targetFunds || 0), 0);
         const totalSupporters = campaigns.reduce((acc, c) => acc + (c.financials?.donorCount || 0), 0);
-        
-        const successRate = totalCampaigns > 0 
-            ? Math.round((completedCampaigns / totalCampaigns) * 100) 
+
+        const successRate = totalCampaigns > 0
+            ? Math.round((completedCampaigns / totalCampaigns) * 100)
             : 0;
 
         return {
@@ -161,7 +161,7 @@ export default function CampaignsPage() {
     const handleCreate = async () => {
         try {
             setIsSaving(true);
-            
+
             // Construct payload strictly matching the sample req.body
             const payload = {
                 title: formData.title,
@@ -178,7 +178,7 @@ export default function CampaignsPage() {
             };
 
             await campaignsApi.create(payload);
-            
+
             toast({
                 title: "Success",
                 description: "Campaign created successfully",
@@ -231,11 +231,13 @@ export default function CampaignsPage() {
         });
     };
 
-    const filteredCampaigns = campaigns.filter(
-        (c) =>
-            c.title.toLowerCase().includes(search.toLowerCase()) ||
-            c.description.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredCampaigns = campaigns
+        .filter(
+            (c) =>
+                c.title.toLowerCase().includes(search.toLowerCase()) ||
+                c.description.toLowerCase().includes(search.toLowerCase())
+        )
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const calculateProgress = (raised, target) => {
         if (!target || target === 0) return 0;
@@ -259,7 +261,7 @@ export default function CampaignsPage() {
                             Manage fundraising campaigns and donations
                         </p>
                     </div>
-                    
+
                     {/* UPDATED: Dialog Form */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
@@ -268,88 +270,94 @@ export default function CampaignsPage() {
                                 New Campaign
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
                             <DialogHeader>
-                                <DialogTitle>Create Campaign</DialogTitle>
-                                <DialogDescription>
+                                <DialogTitle className="text-[#001145]">Create Campaign</DialogTitle>
+                                <DialogDescription className="text-[#7088aa]">
                                     Create a new fundraising campaign
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="title">Campaign Title</Label>
+                                    <Label htmlFor="title" className="text-[#001439]">Campaign Title</Label>
                                     <Input
                                         id="title"
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                         placeholder="Immediate Agenda Test"
+                                        className="text-[#001439] border-[#dbeaff] placeholder:text-[#a8bdda] focus-visible:ring-[#001145]"
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="intent">Intent</Label>
+                                    <Label htmlFor="intent" className="text-[#001439]">Intent</Label>
                                     <Input
                                         id="intent"
                                         value={formData.intent}
                                         onChange={(e) => setFormData({ ...formData, intent: e.target.value })}
                                         placeholder="Testing"
+                                        className="text-[#001439] border-[#dbeaff] placeholder:text-[#a8bdda] focus-visible:ring-[#001145]"
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="description">Description</Label>
+                                    <Label htmlFor="description" className="text-[#001439]">Description</Label>
                                     <Textarea
                                         id="description"
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         placeholder="Testing the 1-minute delay."
                                         rows={3}
+                                        className="text-[#001439] border-[#dbeaff] placeholder:text-[#a8bdda] focus-visible:ring-[#001145]"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="category">Category (Tag)</Label>
+                                        <Label htmlFor="category" className="text-[#001439]">Category (Tag)</Label>
                                         <Select
                                             value={formData.category}
                                             onValueChange={(value) => setFormData({ ...formData, category: value })}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className="text-[#001439] border-[#dbeaff] focus:ring-[#001145]">
                                                 <SelectValue />
                                             </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="test">Test</SelectItem>
+                                            <SelectContent className="bg-white border-[#dbeaff]">
+                                                <SelectItem value="test" className="text-[#001439] focus:bg-[#f6faff] focus:text-[#001145]">Test</SelectItem>
                                                 {Object.entries(categoryLabels).map(([value, label]) => (
-                                                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                                                    <SelectItem key={value} value={value} className="text-[#001439] focus:bg-[#f6faff] focus:text-[#001145]">{label}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="targetFunds">Target Funds (₹)</Label>
+                                        <Label htmlFor="targetFunds" className="text-[#001439]">Target Funds (₹)</Label>
                                         <Input
                                             id="targetFunds"
                                             type="number"
                                             value={formData.targetFunds}
                                             onChange={(e) => setFormData({ ...formData, targetFunds: e.target.value })}
                                             placeholder="1000"
+                                            className="text-[#001439] border-[#dbeaff] placeholder:text-[#a8bdda] focus-visible:ring-[#001145]"
                                         />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="startDate">Start Date & Time</Label>
+                                        <Label htmlFor="startDate" className="text-[#001439]">Start Date & Time</Label>
                                         <Input
                                             id="startDate"
                                             type="datetime-local"
                                             value={formData.startDate}
                                             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                            className="text-[#001439] border-[#dbeaff] placeholder:text-[#a8bdda] focus-visible:ring-[#001145]"
                                         />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="endDate">End Date & Time</Label>
+                                        <Label htmlFor="endDate" className="text-[#001439]">End Date & Time</Label>
                                         <Input
                                             id="endDate"
                                             type="datetime-local"
                                             value={formData.endDate}
                                             onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                                            className="text-[#001439] border-[#dbeaff] placeholder:text-[#a8bdda] focus-visible:ring-[#001145]"
                                         />
                                     </div>
                                 </div>
@@ -358,12 +366,12 @@ export default function CampaignsPage() {
                                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                                     Cancel
                                 </Button>
-                                <Button 
-                                    onClick={handleCreate} 
+                                <Button
+                                    onClick={handleCreate}
                                     disabled={
-                                        isSaving || 
-                                        !formData.title || 
-                                        !formData.startDate || 
+                                        isSaving ||
+                                        !formData.title ||
+                                        !formData.startDate ||
                                         !formData.endDate ||
                                         !formData.targetFunds
                                     }
@@ -482,159 +490,169 @@ export default function CampaignsPage() {
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Campaign</TableHead>
-                                        <TableHead>Category</TableHead>
-                                        <TableHead>Progress</TableHead>
-                                        <TableHead>Timeline</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="w-20">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredCampaigns.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                No campaigns found
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredCampaigns.map((campaign) => {
-                                            const progress = calculateProgress(
-                                                campaign.financials?.raisedFunds, 
-                                                campaign.financials?.targetFunds
-                                            );
-                                            const daysLeft = calculateDaysRemaining(campaign.endDate);
-                                            const category = campaign.tags && campaign.tags.length > 0 ? campaign.tags[0] : 'general';
+                            <div className="rounded-xl border border-[#dbeaff] overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[900px]">
+                                        <thead className="bg-[#001145] text-white">
+                                            <tr>
+                                                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                                    Campaign
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                                    Category
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                                    Progress
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                                    Timeline
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[#e4f0ff] bg-white">
+                                            {filteredCampaigns.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-12 text-center text-[#7088aa]">
+                                                        No campaigns found
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredCampaigns.map((campaign) => {
+                                                    const progress = calculateProgress(
+                                                        campaign.financials?.raisedFunds,
+                                                        campaign.financials?.targetFunds
+                                                    );
+                                                    const daysLeft = calculateDaysRemaining(campaign.endDate);
+                                                    const category = campaign.tags && campaign.tags.length > 0 ? campaign.tags[0] : 'general';
 
-                                            return (
-                                                <TableRow key={campaign._id}>
-                                                    <TableCell>
-                                                        <div>
-                                                            <div className="font-medium">{campaign.title}</div>
-                                                            <div className="text-sm text-muted-foreground line-clamp-1">
-                                                                {campaign.intent || campaign.description}
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline">
-                                                            {categoryLabels[category] || category}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span>₹{campaign.financials?.raisedFunds?.toLocaleString() || 0}</span>
-                                                                <span className="text-muted-foreground">/ ₹{campaign.financials?.targetFunds?.toLocaleString() || 0}</span>
-                                                            </div>
-                                                            <Progress value={progress} className="h-2" />
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-1 text-sm">
-                                                            <Calendar className="h-3 w-3" />
-                                                            {campaign.endDate ? format(new Date(campaign.endDate), "MMM d, yyyy") : "N/A"}
-                                                        </div>
-                                                        {daysLeft > 0 && (
-                                                            <div className="text-xs text-muted-foreground">{daysLeft} days left</div>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant={statusColors[campaign.status] || "default"}>
-                                                            {campaign.status}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon">
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => { setSelectedCampaign(campaign); setIsDetailOpen(true); }}>
-                                                                    <Eye className="mr-2 h-4 w-4" /> View Details
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem>
-                                                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                                                </DropdownMenuItem>
-                                                                {campaign.status === "pending" && (
-                                                                    <DropdownMenuItem onClick={() => handleVerify(campaign._id)}>
-                                                                        <CheckCircle className="mr-2 h-4 w-4" /> Verify & Activate
-                                                                    </DropdownMenuItem>
+                                                    return (
+                                                        <tr key={campaign._id} className="hover:bg-[#f6f9fe] transition-colors">
+                                                            <td className="px-6 py-4">
+                                                                <div>
+                                                                    <div className="font-bold text-[#001439]">{campaign.title}</div>
+                                                                    <div className="text-sm text-[#7088aa] line-clamp-1">
+                                                                        {campaign.intent || campaign.description}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#dbeaff] text-[#001145]">
+                                                                    {categoryLabels[category] || category}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="space-y-1 min-w-[150px]">
+                                                                    <div className="flex items-center justify-between text-sm">
+                                                                        <span className="text-[#001439]">₹{campaign.financials?.raisedFunds?.toLocaleString() || 0}</span>
+                                                                        <span className="text-[#7088aa]">/ ₹{campaign.financials?.targetFunds?.toLocaleString() || 0}</span>
+                                                                    </div>
+                                                                    <Progress value={progress} className="h-2" />
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-1 text-sm text-[#001439]">
+                                                                    <Calendar className="h-3 w-3" />
+                                                                    {campaign.endDate ? format(new Date(campaign.endDate), "MMM d, yyyy") : "N/A"}
+                                                                </div>
+                                                                {daysLeft > 0 && (
+                                                                    <div className="text-xs text-[#7088aa]">{daysLeft} days left</div>
                                                                 )}
-                                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(campaign._id)}>
-                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <Badge variant={statusColors[campaign.status] || "default"}>
+                                                                    {campaign.status}
+                                                                </Badge>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center text-black">
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button size="icon">
+                                                                            <MoreHorizontal className="h-4 text-black w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end">
+                                                                        <DropdownMenuItem className="text-black" onClick={() => { setSelectedCampaign(campaign); setIsDetailOpen(true); } }>
+                                                                            <Eye className="mr-2 text-black h-4 w-4" /> View Details
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem className="text-black">
+                                                                            <Edit className="mr-2 text-black h-4 w-4" /> Edit
+                                                                        </DropdownMenuItem>
+                                                                        {campaign.status === "pending" && (
+                                                                            <DropdownMenuItem className="text-black" onClick={() => handleVerify(campaign._id)}>
+                                                                                <CheckCircle className="mr-2 text-black h-4 w-4" /> Verify & Activate
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                        <DropdownMenuItem className="text-black" onClick={() => handleDelete(campaign._id)}>
+                                                                            <Trash2 className="mr-2 text-black h-4 w-4" /> Delete
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
 
                 {/* Campaign Detail Dialog */}
                 <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
                         <DialogHeader>
-                            <DialogTitle>{selectedCampaign?.title}</DialogTitle>
-                            <DialogDescription>{selectedCampaign?.intent || "No intent specified"}</DialogDescription>
+                            <DialogTitle className="text-[#001439] text-xl">{selectedCampaign?.title}</DialogTitle>
+                            <DialogDescription className="text-[#7088aa]">{selectedCampaign?.intent || "No intent specified"}</DialogDescription>
                         </DialogHeader>
                         {selectedCampaign && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-3 gap-4">
-                                    <Card>
-                                        <CardContent className="pt-4">
-                                            <div className="text-2xl font-bold">
-                                                ₹{selectedCampaign.financials?.raisedFunds?.toLocaleString() || 0}
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                raised of ₹{selectedCampaign.financials?.targetFunds?.toLocaleString() || 0}
-                                            </p>
-                                            <Progress 
-                                                value={calculateProgress(selectedCampaign.financials?.raisedFunds, selectedCampaign.financials?.targetFunds)} 
-                                                className="mt-2" 
-                                            />
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardContent className="pt-4">
-                                            <div className="text-2xl font-bold">
-                                                {selectedCampaign.financials?.donorCount || 0}
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">Supporters</p>
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardContent className="pt-4">
-                                            <div className="text-2xl font-bold">
-                                                {calculateDaysRemaining(selectedCampaign.endDate)}
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">Days Left</p>
-                                        </CardContent>
-                                    </Card>
+                                    <div className="bg-[#f6faff] p-4 rounded-xl border border-[#e4f0ff]">
+                                        <div className="text-2xl font-bold text-[#001439]">
+                                            ₹{selectedCampaign.financials?.raisedFunds?.toLocaleString() || 0}
+                                        </div>
+                                        <p className="text-sm text-[#7088aa]">
+                                            raised of ₹{selectedCampaign.financials?.targetFunds?.toLocaleString() || 0}
+                                        </p>
+                                        <Progress
+                                            value={calculateProgress(selectedCampaign.financials?.raisedFunds, selectedCampaign.financials?.targetFunds)}
+                                            className="mt-2 h-2"
+                                        />
+                                    </div>
+                                    <div className="bg-[#f6faff] p-4 rounded-xl border border-[#e4f0ff]">
+                                        <div className="text-2xl font-bold text-[#001439]">
+                                            {selectedCampaign.financials?.donorCount || 0}
+                                        </div>
+                                        <p className="text-sm text-[#7088aa]">Supporters</p>
+                                    </div>
+                                    <div className="bg-[#f6faff] p-4 rounded-xl border border-[#e4f0ff]">
+                                        <div className="text-2xl font-bold text-[#001439]">
+                                            {calculateDaysRemaining(selectedCampaign.endDate)}
+                                        </div>
+                                        <p className="text-sm text-[#7088aa]">Days Left</p>
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <h4 className="font-semibold mb-2">About this Campaign</h4>
-                                    <p className="text-muted-foreground">{selectedCampaign.description}</p>
+                                    <h4 className="font-semibold mb-2 text-[#001439]">About this Campaign</h4>
+                                    <p className="text-[#7088aa]">{selectedCampaign.description}</p>
                                 </div>
 
                                 {selectedCampaign.tags && selectedCampaign.tags.length > 0 && (
                                     <div>
-                                        <h4 className="font-semibold mb-2">Tags</h4>
+                                        <h4 className="font-semibold mb-2 text-[#001439]">Tags</h4>
                                         <div className="flex gap-2">
                                             {selectedCampaign.tags.map(tag => (
-                                                <Badge key={tag} variant="secondary">{tag}</Badge>
+                                                <Badge key={tag} variant="secondary" className="bg-[#dbeaff] text-[#001145] hover:bg-[#dbeaff]/80">{tag}</Badge>
                                             ))}
                                         </div>
                                     </div>
