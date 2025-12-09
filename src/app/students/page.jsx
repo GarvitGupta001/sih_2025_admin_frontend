@@ -32,12 +32,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Eye, Users, BookOpen, GraduationCap } from "lucide-react";
 
 export default function StudentsPage() {
-    const token = localStorage.getItem("token");
+    const [token, setToken] = useState("");
     const [students, setStudents] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+
+    useEffect(() => {
+        setToken(localStorage.getItem("token"));
+    }, []);
 
     useEffect(() => {
         if (token) {

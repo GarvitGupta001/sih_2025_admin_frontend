@@ -34,13 +34,18 @@ import {
 import { SARTHAK_CHART_COLORS } from "@/lib/theme";
 
 export default function JobsPage() {
-    const token = localStorage.getItem("token");
+    const [token, setToken] = useState("");
     const [jobs, setJobs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedJob, setSelectedJob] = useState(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+    useEffect(()=> {
+        const token = localStorage.getItem("token");
+        setToken(token);
+    }, [])
 
     const fetchJobs = async () => {
         try {
